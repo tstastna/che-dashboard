@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020 Red Hat, Inc.
+# Copyright (c) 2020-2021 Red Hat, Inc.
 # This program and the accompanying materials are made
 # available under the terms of the Eclipse Public License 2.0
 # which is available at https://www.eclipse.org/legal/epl-2.0/
@@ -12,16 +12,18 @@ name: CI
 on:
   workflow_dispatch:
     inputs: {}
-  push:
-    branches:
-      - master
+  # disabled as we have ci-multiarch.yaml now
+  # push:
+  #   branches:
+  #     - master
+
+env:
+  IMAGE_FULL: quay.io/eclipse/che-dashboard:amd64-next
+  CACHE_IMAGE_FULL: docker.io/cheincubator/che-dashboard:cache
 
 jobs:
   docker-build:
     runs-on: ubuntu-18.04
-    env:
-      IMAGE_FULL: quay.io/eclipse/che-dashboard:next
-      CACHE_IMAGE_FULL: docker.io/cheincubator/che-dashboard:cache
     steps:
       -
         name: "Checkout Che Dashboard source code"

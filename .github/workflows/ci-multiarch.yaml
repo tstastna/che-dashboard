@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020 Red Hat, Inc.
+# Copyright (c) 2020-2021 Red Hat, Inc.
 # This program and the accompanying materials are made
 # available under the terms of the Eclipse Public License 2.0
 # which is available at https://www.eclipse.org/legal/epl-2.0/
@@ -111,5 +111,5 @@ jobs:
             echo "[!] The job 'build-images' didn't provide any outputs. Can't create the manifest list."
             exit 1;
           fi
-          docker manifest create ${{ env.IMAGE }}:multiarch-next $AMEND
-          docker manifest push ${{ env.IMAGE }}:multiarch-next
+          docker manifest create ${{ env.IMAGE }}:next $AMEND
+          docker manifest push ${{ env.IMAGE }}:next
