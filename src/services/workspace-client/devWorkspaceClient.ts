@@ -13,7 +13,7 @@
 import { inject, injectable } from 'inversify';
 import { convertDevWorkspaceV2ToV1, isDeleting, isWebTerminal } from '../helpers/devworkspace';
 import { WorkspaceClient } from './';
-import { DevWorkspaceClient as DevWorkspaceClientLibrary, IDevWorkspaceApi, IDevWorkspaceDevfile, IDevWorkspace } from '@eclipse-che/devworkspace-client';
+import { DevWorkspaceClient as DevWorkspaceClientLibrary, IDevWorkspaceApi, IDevWorkspaceDevfile, IDevWorkspace, IDevWorkspaceTemplateApi, IDevWorkspaceTemplate } from '@eclipse-che/devworkspace-client';
 import { DevWorkspaceStatus, WorkspaceStatus } from '../helpers/types';
 import { KeycloakSetupService } from '../keycloak/setup';
 import { delay } from '../helpers/delay';
@@ -26,6 +26,174 @@ export interface IStatusUpdate {
   workspaceId: string;
 }
 
+const TheiaDevfile = <IDevWorkspaceDevfile>{
+  schemaVersion: '2.1.0',
+  commands: [
+    {
+      id: 'init-container-command',
+      apply: {
+        component: 'remote-runtime-injector'
+      }
+    }
+  ],
+  events: {
+    preStart: [
+      'init-container-command'
+    ]
+  },
+  components: [
+    {
+      name: 'plugins',
+      volume: {}
+    },
+    {
+      name: 'theia-local',
+      volume: {}
+    },
+    {
+      name: 'theia-ide',
+      container: {
+        image: 'quay.io/eclipse/che-theia@sha256:0efc94a17a0c655b37d90f5a29ea876c78af9f9bebc2b4494b1060723b07c6f9',
+        env: [
+          {
+            name: 'THEIA_PLUGINS',
+            value: 'local-dir:///plugins'
+          },
+          {
+            name: 'HOSTED_PLUGIN_HOSTNAME',
+            value: '0.0.0.0'
+          },
+          {
+            name: 'HOSTED_PLUGIN_PORT',
+            value: '3130'
+          },
+          {
+            name: 'THEIA_HOST',
+            value: '0.0.0.0'
+          }
+        ],
+        volumeMounts: [
+          {
+            name: 'plugins',
+            path: '/plugins'
+          },
+          {
+            name: 'theia-local',
+            path: '/home/theia/.theia'
+          }
+        ],
+        mountSources: true,
+        memoryLimit: '512M',
+        endpoints: [
+          {
+            name: 'theia',
+            attributes: {
+              type: 'ide',
+              cookiesAuthEnabled: true,
+              discoverable: false
+            },
+            targetPort: 3100,
+            exposure: 'public',
+            secure: false,
+            protocol: 'http'
+          },
+          {
+            name: 'webviews',
+            attributes: {
+              type: 'webview',
+              cookiesAuthEnabled: true,
+              discoverable: false,
+              unique: true
+            },
+            targetPort: 3100,
+            exposure: 'public',
+            secure: false,
+            protocol: 'http'
+          },
+          {
+            name: 'mini-browser',
+            attributes: {
+              type: 'mini-browser',
+              cookiesAuthEnabled: true,
+              discoverable: false,
+              unique: true
+            },
+            targetPort: 3100,
+            exposure: 'public',
+            secure: false,
+            protocol: 'http'
+          },
+          {
+            name: 'theia-dev',
+            attributes: {
+              type: 'ide-dev',
+              discoverable: false
+            },
+            targetPort: 3130,
+            exposure: 'public',
+            protocol: 'http'
+          },
+          {
+            name: 'theia-redirect-1',
+            attributes: {
+              discoverable: false
+            },
+            targetPort: 13131,
+            exposure: 'public',
+            protocol: 'http'
+          },
+          {
+            name: 'theia-redirect-2',
+            attributes: {
+              discoverable: false
+            },
+            targetPort: 13132,
+            exposure: 'public',
+            protocol: 'http'
+          },
+          {
+            name: 'theia-redirect-3',
+            attributes: {
+              discoverable: false
+            },
+            targetPort: 13133,
+            exposure: 'public',
+            protocol: 'http'
+          }
+        ]
+      }
+    },
+    {
+      name: 'remote-endpoint',
+      volume: {
+        ephemeral: true
+      }
+    },
+    {
+      name: 'remote-runtime-injector',
+      container: {
+        image: 'quay.io/eclipse/che-theia-endpoint-runtime-binary@sha256:55a740a3a6c6e7e23f96fd0d8f23bba573a42a94abe01c6696d32045ba833ba7',
+        env: [
+          {
+            name: 'PLUGIN_REMOTE_ENDPOINT_EXECUTABLE',
+            value: '/remote-endpoint/plugin-remote-endpoint'
+          },
+          {
+            name: 'REMOTE_ENDPOINT_VOLUME_NAME',
+            value: 'remote-endpoint'
+          }
+        ],
+        volumeMounts: [
+          {
+            name: 'remote-endpoint',
+            path: '/remote-endpoint'
+          }
+        ]
+      }
+    }
+  ]
+};
+
 /**
  * This class manages the connection between the frontend and the devworkspace typescript library
  */
@@ -33,6 +201,7 @@ export interface IStatusUpdate {
 export class DevWorkspaceClient extends WorkspaceClient {
 
   private workspaceApi: IDevWorkspaceApi;
+  private dwtApi: IDevWorkspaceTemplateApi;
   private previousItems: Map<string, Map<string, IStatusUpdate>>;
   private _defaultEditor?: string;
   private _defaultPlugins?: string[];
@@ -45,6 +214,7 @@ export class DevWorkspaceClient extends WorkspaceClient {
     this.axios.defaults.baseURL = '/api/unsupported/k8s';
     this.client = DevWorkspaceClientLibrary.getRestApi(this.axios);
     this.workspaceApi = this.client.workspaceApi;
+    this.dwtApi = this.client.templateApi;
     this.previousItems = new Map();
     this.maxStatusAttempts = 10;
   }
@@ -82,7 +252,30 @@ export class DevWorkspaceClient extends WorkspaceClient {
   }
 
   async create(devfile: IDevWorkspaceDevfile): Promise<che.Workspace> {
-    const createdWorkspace = await this.workspaceApi.create(devfile, this._defaultEditor, this._defaultPlugins);
+    const theiaDWT = await this.dwtApi.create(<IDevWorkspaceTemplate>{
+      kind: 'DevWorkspaceTemplate',
+      apiVersion: 'workspace.devfile.io/v1alpha2',
+      metadata: {
+        name: 'eclipse-che-theia-latest',
+        namespace: devfile.metadata.namespace,
+      },
+      spec: TheiaDevfile
+    });
+
+    if (!devfile.components) {
+      devfile.components = [];
+    }
+    devfile.components.push({
+      name: theiaDWT.metadata.name,
+      plugin: {
+        kubernetes: {
+          name: theiaDWT.metadata.name,
+          namespace: theiaDWT.metadata.namespace
+        }
+      }
+    });
+
+    const createdWorkspace = await this.workspaceApi.create(devfile);
     return convertDevWorkspaceV2ToV1(createdWorkspace);
   }
 

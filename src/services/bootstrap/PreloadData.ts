@@ -149,6 +149,8 @@ export class PreloadData {
 
   private updateDefaultComponents(): void {
     // These are just temporary until we create devworkspace templates on the dashboard side
+    //     che.factory.default_editor: "eclipse/che-theia/next"
+    // che.factory.default_plugins: "eclipse/che-machine-exec-plugin/nightly"
     this.devWorkspaceClient.defaultEditor = 'theia-next'; // settings['che.factory.default_editor'] || 'theia-next';
     this.devWorkspaceClient.defaultPlugins = ['machine-exec']; // settings['che.factory.default_plugins'] || 'machine-exec';
   }
