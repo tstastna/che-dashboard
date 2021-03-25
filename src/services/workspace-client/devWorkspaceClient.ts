@@ -13,7 +13,7 @@
 import { inject, injectable } from 'inversify';
 import { convertDevWorkspaceV2ToV1, isDeleting, isWebTerminal } from '../helpers/devworkspace';
 import { WorkspaceClient } from './';
-import { DevWorkspaceClient as DevWorkspaceClientLibrary, IDevWorkspaceApi, IDevWorkspaceDevfile, IDevWorkspace, IDevWorkspaceTemplateApi, IDevWorkspaceTemplate, devWorkspaceApiGroup, devworkspaceSingularSubresource } from '@eclipse-che/devworkspace-client';
+import { DevWorkspaceClient as DevWorkspaceClientLibrary, IDevWorkspaceApi, IDevWorkspaceDevfile, IDevWorkspace, IDevWorkspaceTemplateApi, IDevWorkspaceTemplate, devWorkspaceApiGroup, devworkspaceSingularSubresource, ICheApi } from '@eclipse-che/devworkspace-client';
 import { DevWorkspaceStatus, WorkspaceStatus } from '../helpers/types';
 import { KeycloakSetupService } from '../keycloak/setup';
 import { delay } from '../helpers/delay';
@@ -34,6 +34,7 @@ export class DevWorkspaceClient extends WorkspaceClient {
 
   private workspaceApi: IDevWorkspaceApi;
   private dwtApi: IDevWorkspaceTemplateApi;
+  private cheApi: ICheApi;
   private previousItems: Map<string, Map<string, IStatusUpdate>>;
   private client: RestApi;
   private maxStatusAttempts: number;
@@ -45,6 +46,7 @@ export class DevWorkspaceClient extends WorkspaceClient {
     this.client = DevWorkspaceClientLibrary.getRestApi(this.axios);
     this.workspaceApi = this.client.workspaceApi;
     this.dwtApi = this.client.templateApi;
+    this.cheApi = this.client.cheApi;
     this.previousItems = new Map();
     this.maxStatusAttempts = 10;
   }
@@ -146,7 +148,7 @@ export class DevWorkspaceClient extends WorkspaceClient {
   async initializeNamespace(namespace: string): Promise<boolean> {
     try {
       this.initializing = new Promise((resolve, reject) => {
-        this.workspaceApi.initializeNamespace(namespace).then(_ => {
+        this.cheApi.initializeNamespace(namespace).then(_ => {
           resolve(undefined);
         });
       });
