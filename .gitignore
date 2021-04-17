@@ -1,14 +1,15 @@
 node_modules/
-yarn-error.log
 .deps/tmp/
-
 build/
+coverage/
+
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+yarn-error.log
 
 .theia/
 .idea/
-
-tests/e2e/dist/
-tests/e2e/node_modules/
-tests/e2e/report/
-
-coverage

@@ -11,6 +11,7 @@
  */
 
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const PnpWebpackPlugin = require('pnp-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const stylus_plugin = require('poststylus');
 const stylusLoader = require('stylus-loader');
@@ -111,7 +112,15 @@ module.exports = {
     ]
   },
   resolve: {
-    extensions: ['.js', '.ts', '.tsx']
+    extensions: ['.js', '.ts', '.tsx'],
+    plugins: [
+      PnpWebpackPlugin,
+    ],
+  },
+  resolveLoader: {
+    plugins: [
+      PnpWebpackPlugin.moduleLoader(module),
+    ],
   },
   node: {
     fs: 'empty',
