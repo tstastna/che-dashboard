@@ -45,7 +45,7 @@ exports[`Registry Password Input should correctly render the component 1`] = `
         <input
           aria-invalid={false}
           aria-label="Password input"
-          className="pf-c-form-control"
+          className="pf-c-form-control pf-m-success"
           data-testid="registry-password-input"
           disabled={false}
           onBlur={[Function]}

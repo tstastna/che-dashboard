@@ -36,10 +36,15 @@ export class RegistryPasswordFormGroup extends React.PureComponent<Props, State>
     super(props);
 
     const password = this.props.password || '';
-    const valid = ValidatedOptions.default;
+    const { valid, errorMessage } = this.validate(password);
     const isHidden = true;
 
-    this.state = { password, valid, isHidden };
+    this.state = {
+      password,
+      valid,
+      errorMessage,
+      isHidden,
+    };
   }
 
   public componentDidUpdate(prevProps: Props): void {
@@ -53,10 +58,10 @@ export class RegistryPasswordFormGroup extends React.PureComponent<Props, State>
     if (this.state.password === password) {
       return;
     }
-    const { onChange } = this.props;
     const { errorMessage, valid } = this.validate(password);
 
     this.setState({ password, valid, errorMessage });
+    const { onChange } = this.props;
     if (onChange) {
       onChange(password, valid);
     }
@@ -103,7 +108,11 @@ export class RegistryPasswordFormGroup extends React.PureComponent<Props, State>
             validated={valid}
             onChange={_password => this.onChange(_password)}
           />
-          <Button variant="control" aria-label="show" onClick={() => this.setState({ isHidden: !isHidden })}>
+          <Button
+            variant="control"
+            aria-label="show"
+            onClick={() => this.setState({ isHidden: !isHidden })}
+          >
             {isHidden ? (<EyeSlashIcon />) : (<EyeIcon />)}
           </Button>
         </InputGroupText>

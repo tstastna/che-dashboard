@@ -19,7 +19,7 @@ import { FakeStoreBuilder } from '../../../store/__mocks__/storeBuilder';
 import { createFakeCheWorkspace } from '../../../store/__mocks__/workspace';
 import { languages, editor } from 'monaco-editor-core/esm/vs/editor/editor.main';
 
-jest.mock('../../../../node_modules/monaco-editor-core/esm/vs/editor/editor.main', () => {
+jest.mock('monaco-editor-core/esm/vs/editor/editor.main', () => {
   return () => ({ languages, editor });
 });
 

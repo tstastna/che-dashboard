@@ -92,7 +92,7 @@ describe('Registry Password Input', () => {
       expect(input).toBeInvalid();
     });
 
-    it('should handle maximum value length', () => {
+    it('should handle maximum value length typed by user', () => {
       const component = getComponent('https://testreg.com/test1');
       render(component);
 
@@ -117,6 +117,7 @@ describe('Registry Password Input', () => {
       expect(label).toBeTruthy();
       expect(input).toBeInvalid();
     });
+
   });
 
 });
