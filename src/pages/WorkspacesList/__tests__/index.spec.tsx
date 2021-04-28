@@ -241,21 +241,6 @@ describe('Workspaces List Page', () => {
 
   describe('Table', () => {
 
-    it('should handle workspaces that are being deleted', () => {
-      // mute the outputs
-      console.error = jest.fn();
-
-      const { rerender } = renderComponent();
-
-      const checkboxes = screen.getAllByRole('checkbox', { name: '' });
-      expect(checkboxes[0]).not.toBeChecked();
-
-      isDeleted = [workspaces[0].id];
-      rerender(getComponent());
-
-      expect(checkboxes[0]).toBeChecked();
-    });
-
     it('should open actions under kebab button', () => {
       renderComponent();
 
@@ -323,11 +308,11 @@ describe('Workspaces List Page', () => {
     it('should handle "Stop Workspace" action', () => {
       const runtime: che.WorkspaceRuntime = {
         machines: {},
-        status: WorkspaceStatus[WorkspaceStatus.RUNNING],
+        status: WorkspaceStatus.RUNNING,
         activeEnv: 'default',
       };
       workspaces[0] = convertWorkspace(
-        createFakeCheWorkspace('workspace-' + 0, 'workspace-' + 0, undefined, WorkspaceStatus[WorkspaceStatus.RUNNING], runtime)
+        createFakeCheWorkspace('workspace-' + 0, 'workspace-' + 0, undefined, WorkspaceStatus.RUNNING, runtime)
       );
 
       renderComponent();
@@ -399,7 +384,7 @@ function getComponent(): React.ReactElement {
       workspaces={workspaces}
       onAction={mockOnAction}
       showConfirmation={mockShowConfirmation}
-      isDeleted={isDeleted}
+      deletingId={isDeleted}
     >
     </WorkspacesList>
   );

@@ -15,7 +15,7 @@ import * as api from '@eclipse-che/api';
 import { ThunkDispatch } from 'redux-thunk';
 import { AppThunk } from '../..';
 import { container } from '../../../inversify.config';
-import { DevWorkspaceStatus, WorkspaceStatus } from '../../../services/helpers/types';
+import { DevWorkspaceStatus } from '../../../services/helpers/types';
 import { createState } from '../../helpers';
 import { DevWorkspaceClient, IStatusUpdate } from '../../../services/workspace-client/devWorkspaceClient';
 import { CheWorkspaceClient } from '../../../services/workspace-client/cheWorkspaceClient';
@@ -24,6 +24,8 @@ import { deleteLogs, mergeLogs } from '../logs';
 
 const cheWorkspaceClient = container.get(CheWorkspaceClient);
 const devWorkspaceClient = container.get(DevWorkspaceClient);
+
+const devWorkspaceStatusMap = new Map<string, string | undefined>();
 
 export interface State {
   isLoading: boolean;
@@ -71,6 +73,11 @@ interface DeleteWorkspaceAction extends Action {
   workspaceId: string;
 }
 
+interface TerminateWorkspaceAction extends Action {
+  type: 'TERMINATE_DEVWORKSPACE';
+  workspaceId: string;
+}
+
 interface AddWorkspaceAction extends Action {
   type: 'DEV_ADD_WORKSPACE';
   workspace: IDevWorkspace;
@@ -82,6 +89,7 @@ type KnownAction =
   | ReceiveWorkspacesAction
   | UpdateWorkspaceAction
   | DeleteWorkspaceAction
+  | TerminateWorkspaceAction
   | AddWorkspaceAction
   | UpdateWorkspaceStatusAction
   | UpdateWorkspacesLogsAction
@@ -92,12 +100,13 @@ export type ResourceQueryParams = {
   [propName: string]: string | boolean | undefined;
 }
 export type ActionCreators = {
+  updateDeletedDevWorkspaces: (deletedWorkspaceId: string[]) => AppThunk<KnownAction, void>;
   updateDevWorkspaceStatus: (workspace: IDevWorkspace, message: IStatusUpdate) => AppThunk<KnownAction, void>;
   requestWorkspaces: () => AppThunk<KnownAction, Promise<void>>;
   requestWorkspace: (workspace: IDevWorkspace) => AppThunk<KnownAction, Promise<void>>;
   startWorkspace: (workspace: IDevWorkspace) => AppThunk<KnownAction, Promise<void>>;
   stopWorkspace: (workspace: IDevWorkspace) => AppThunk<KnownAction, Promise<void>>;
-  deleteWorkspace: (workspace: IDevWorkspace) => AppThunk<KnownAction, Promise<void>>;
+  terminateWorkspace: (workspace: IDevWorkspace) => AppThunk<KnownAction, Promise<void>>;
   updateWorkspace: (workspace: IDevWorkspace) => AppThunk<KnownAction, Promise<void>>;
   createWorkspaceFromDevfile: (devfile: IDevWorkspaceDevfile) => AppThunk<KnownAction, Promise<IDevWorkspace>>;
 
@@ -108,6 +117,15 @@ type WorkspaceStatusMessageHandler = (message: api.che.workspace.event.Workspace
 type EnvironmentOutputMessageHandler = (message: api.che.workspace.event.RuntimeLogEvent) => void;
 
 export const actionCreators: ActionCreators = {
+
+  updateDeletedDevWorkspaces: (deletedWorkspaceId: string[]): AppThunk<KnownAction, void> => (dispatch): void => {
+    deletedWorkspaceId.forEach(workspaceId => {
+      dispatch({
+        type: 'DEV_DELETE_WORKSPACE',
+        workspaceId,
+      });
+    });
+  },
 
   updateDevWorkspaceStatus: (workspace: IDevWorkspace, message: IStatusUpdate): AppThunk<KnownAction, void> => (dispatch): void => {
     onStatusUpdateReceived(workspace, dispatch, message);
@@ -159,7 +177,7 @@ export const actionCreators: ActionCreators = {
       });
     } catch (e) {
       dispatch({ type: 'DEV_RECEIVE_ERROR' });
-      throw new Error(e.message);
+      throw e.response?.data?.message ? e.response.data.message : e.message;
     }
   },
 
@@ -173,14 +191,14 @@ export const actionCreators: ActionCreators = {
     }
   },
 
-  deleteWorkspace: (workspace: IDevWorkspace): AppThunk<KnownAction, Promise<void>> => async (dispatch): Promise<void> => {
+  terminateWorkspace: (workspace: IDevWorkspace): AppThunk<KnownAction, Promise<void>> => async (dispatch): Promise<void> => {
     try {
       const namespace = workspace.metadata.namespace;
       const name = workspace.metadata.name;
       await devWorkspaceClient.delete(namespace, name);
       const workspaceId = workspace.status.devworkspaceId;
       dispatch({
-        type: 'DEV_DELETE_WORKSPACE',
+        type: 'TERMINATE_DEVWORKSPACE',
         workspaceId,
       });
       dispatch({ type: 'DEV_DELETE_WORKSPACE_LOGS', workspaceId });
@@ -299,9 +317,20 @@ export const reducer: Reducer<State> = (state: State | undefined, action: KnownA
       return createState(state, {
         workspaces: state.workspaces.concat([action.workspace]),
       });
-    case 'DEV_DELETE_WORKSPACE':
+    case 'TERMINATE_DEVWORKSPACE':
       return createState(state, {
         isLoading: false,
+        workspaces: state.workspaces.map(workspace => {
+          if (workspace.status.devworkspaceId === action.workspaceId) {
+            const targetWorkspace = Object.assign({}, workspace);
+            targetWorkspace.status.phase = DevWorkspaceStatus.TERMINATING;
+            return targetWorkspace;
+          }
+          return workspace;
+        }),
+      });
+    case 'DEV_DELETE_WORKSPACE':
+      return createState(state, {
         workspaces: state.workspaces.filter(workspace => workspace.status.devworkspaceId !== action.workspaceId),
       });
     case 'DEV_UPDATE_WORKSPACES_LOGS':
@@ -330,7 +359,7 @@ function onStatusUpdateReceived(
       type: 'DEV_UPDATE_WORKSPACES_LOGS',
       workspacesLogs,
     });
-    status = WorkspaceStatus[WorkspaceStatus.ERROR];
+    status = DevWorkspaceStatus.FAILED;
   } else {
     if (statusUpdate.message) {
       const workspacesLogs = new Map<string, string[]>();
@@ -349,7 +378,8 @@ function onStatusUpdateReceived(
     }
     status = statusUpdate.status;
   }
-  if (status && WorkspaceStatus[status]) {
+  if (status && status !== devWorkspaceStatusMap.get(workspace.status.devworkspaceId)) {
+    devWorkspaceStatusMap.set(workspace.status.devworkspaceId, status);
     dispatch({
       type: 'DEV_UPDATE_WORKSPACE_STATUS',
       workspaceId: workspace.status.devworkspaceId,

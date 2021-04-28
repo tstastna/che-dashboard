@@ -32,6 +32,7 @@ type State = {
   namespace?: che.KubernetesNamespace;
   generateName?: string;
   workspaceName: string;
+  hasCreated: boolean;
 };
 
 export class CustomWorkspaceTab extends React.PureComponent<Props, State> {
@@ -45,7 +46,7 @@ export class CustomWorkspaceTab extends React.PureComponent<Props, State> {
     const storageType = attributesToType(devfile.attributes);
     const workspaceName = devfile.metadata.name ? devfile.metadata.name : '';
     const generateName = !workspaceName ? devfile.metadata.generateName : '';
-    this.state = { devfile, storageType, generateName, workspaceName };
+    this.state = { devfile, storageType, generateName, workspaceName, hasCreated: false };
     this.devfileEditorRef = React.createRef<Editor>();
   }
 
@@ -126,7 +127,7 @@ export class CustomWorkspaceTab extends React.PureComponent<Props, State> {
     if (!isValid) {
       return;
     }
-    this.setState({ devfile });
+    this.setState({ devfile, hasCreated: false });
     if (devfile?.attributes) {
       const storageType = attributesToType(devfile.attributes);
       if (storageType !== this.state.storageType) {
@@ -145,14 +146,19 @@ export class CustomWorkspaceTab extends React.PureComponent<Props, State> {
 
   private updateEditor(devfile: che.WorkspaceDevfile): void {
     this.devfileEditorRef.current?.updateContent(devfile);
+    this.setState({ hasCreated: false });
   }
 
-  private handleCreate(): Promise<void> {
-    return this.props.onDevfile(this.state.devfile, this.state.namespace?.name);
+  private handleCreate(): void {
+    this.setState({ hasCreated: true });
+    const promise = this.props.onDevfile(this.state.devfile, this.state.namespace?.name);
+    if (promise) {
+      promise.catch(() => this.setState({ hasCreated: false }));
+    }
   }
 
   public render(): React.ReactElement {
-    const { devfile, storageType, generateName, workspaceName } = this.state;
+    const { devfile, storageType, generateName, workspaceName, hasCreated } = this.state;
     return (
       <React.Fragment>
         <PageSection
@@ -199,6 +205,7 @@ export class CustomWorkspaceTab extends React.PureComponent<Props, State> {
           <Button
             variant="primary"
             onClick={() => this.handleCreate()}
+            isDisabled={hasCreated}
           >
             Create & Open
           </Button>

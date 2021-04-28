@@ -18,6 +18,7 @@ import { formatDate, formatRelativeDate } from '../../services/helpers/date';
 import { buildDetailsLocation, toHref, buildIdeLoaderLocation } from '../../services/helpers/location';
 import { isWorkspaceV1, Workspace } from '../../services/workspaceAdapter';
 import { IDevWorkspaceDevfile } from '@eclipse-che/devworkspace-client';
+import { DevWorkspaceStatus } from '../../services/helpers/types';
 
 export interface RowData extends IRow {
   props: {
@@ -28,7 +29,7 @@ export interface RowData extends IRow {
 export function buildRows(
   history: History,
   workspaces: Workspace[],
-  deleted: string[],
+  deletingId: string[],
   filtered: string[],
   selected: string[],
   sortBy: { index: number, direction: SortByDirection }
@@ -52,7 +53,7 @@ export function buildRows(
     })
     .forEach(workspace => {
       const isSelected = selected.includes(workspace.id);
-      const deleting = deleted.includes(workspace.id);
+      const deleting = deletingId.includes(workspace.id);
 
       const locationToDetails = buildDetailsLocation(workspace);
       const linkToDetails = toHref(history, locationToDetails);
@@ -81,7 +82,7 @@ function sort(a: string | number, b: string | number, direction: SortByDirection
 export function buildRow(
   workspace: Workspace,
   isSelected: boolean,
-  isDeleted: boolean,
+  deleting: boolean,
   linkToDetails: string,
   linkToIde: string
 ): RowData {
@@ -134,7 +135,7 @@ export function buildRow(
 
   /* Open IDE link */
   let open: React.ReactElement | string;
-  if (isDeleted) {
+  if (deleting || workspace.status === DevWorkspaceStatus.TERMINATING) {
     open = 'deleting...';
   } else {
     open = <a href={linkToIde}>Open</a>;
@@ -168,7 +169,6 @@ export function buildRow(
     props: {
       workspaceId: workspace.id,
     },
-    selected: isSelected || isDeleted,
-    disableCheckbox: isDeleted,
+    selected: isSelected,
   };
 }

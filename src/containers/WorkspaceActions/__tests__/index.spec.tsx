@@ -101,7 +101,7 @@ describe('Workspace Actions', () => {
                   </button>
                   <input
                     data-testid={valueInputId}
-                    defaultValue={context.isDeleted.join(',')}
+                    defaultValue={context.deletingId.join(',')}
                   />
                 </>
               )}
@@ -131,16 +131,6 @@ describe('Workspace Actions', () => {
       expect(window.console.warn).toHaveBeenCalledWith(
         expect.stringMatching(/unhandled action type/i)
       );
-    });
-
-    it('should start deleting a workspace', () => {
-      renderComponent(WorkspaceAction.DELETE_WORKSPACE);
-
-      const actionButton = screen.getByRole('button');
-      userEvent.click(actionButton);
-
-      const valueInput = screen.getByTestId(valueInputId);
-      expect(valueInput).toHaveValue('workspace-0');
     });
 
     it('should warn if workspace is being deleted', () => {
@@ -178,7 +168,7 @@ describe('Workspace Actions', () => {
                   </button>
                   <input
                     data-testid={valueInputId}
-                    defaultValue={context.isDeleted.join(',')}
+                    defaultValue={context.deletingId.join(',')}
                   />
                 </>
               )}

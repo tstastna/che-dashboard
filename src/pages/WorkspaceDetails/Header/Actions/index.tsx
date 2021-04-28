@@ -99,25 +99,25 @@ export class HeaderActionSelect extends React.PureComponent<Props, State> {
       </DropdownItem>),
       (<DropdownItem
         key={`action-${WorkspaceAction.START_DEBUG_AND_OPEN_LOGS}`}
-        isDisabled={status !== WorkspaceStatus[WorkspaceStatus.STOPPED]}
+        isDisabled={status !== WorkspaceStatus.STOPPED}
         onClick={async () => this.handleSelect(WorkspaceAction.START_DEBUG_AND_OPEN_LOGS, context)}>
         <div>{WorkspaceAction.START_DEBUG_AND_OPEN_LOGS}</div>
       </DropdownItem>),
       (<DropdownItem
         key={`action-${WorkspaceAction.START_IN_BACKGROUND}`}
-        isDisabled={status !== WorkspaceStatus[WorkspaceStatus.STOPPED]}
+        isDisabled={status !== WorkspaceStatus.STOPPED}
         onClick={async () => this.handleSelect(WorkspaceAction.START_IN_BACKGROUND, context)}>
         <div>{WorkspaceAction.START_IN_BACKGROUND}</div>
       </DropdownItem>),
       (<DropdownItem
         key={`action-${WorkspaceAction.STOP_WORKSPACE}`}
-        isDisabled={status === WorkspaceStatus[WorkspaceStatus.STOPPED]}
+        isDisabled={status === WorkspaceStatus.STOPPED}
         onClick={async () => this.handleSelect(WorkspaceAction.STOP_WORKSPACE, context)}>
         <div>{WorkspaceAction.STOP_WORKSPACE}</div>
       </DropdownItem>),
       (<DropdownItem
         key={`action-${WorkspaceAction.DELETE_WORKSPACE}`}
-        isDisabled={status === WorkspaceStatus[WorkspaceStatus.STARTING] || status === WorkspaceStatus[WorkspaceStatus.STOPPING]}
+        isDisabled={status === WorkspaceStatus.STARTING || status === WorkspaceStatus.STOPPING}
         onClick={async () => this.handleSelect(WorkspaceAction.DELETE_WORKSPACE, context)}>
         <div>{WorkspaceAction.DELETE_WORKSPACE}</div>
       </DropdownItem>),
